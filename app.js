@@ -125,7 +125,7 @@ function renderLog() {
     const v = entryAt(e, rate(), h, undefined, 'grow');
     const fut = e.type === 'save' ? `<span class="pos">${money(v.grown)}</span> ${w}` : `<span class="neg">−${money(v.net)}</span> ${w}`;
     const a = e.asset ? ` · asset ${money(e.asset.value)} @ ${e.asset.depreciationPct}%/yr` : '';
-    return `<li class="${e.type}"><div><b>${esc(e.label)}</b><small>${e.date}${e.frequency === 'monthly' ? ' · every month' : ''} · ${esc(e.category || '')}${a}${e.note ? '<br>' + esc(e.note) : ''}</small></div>
+    return `<li class="${e.type}" data-edit="${e.id}"><div><b>${esc(e.label)}</b><small>${e.date}${e.frequency === 'monthly' ? ' · every month' : ''} · ${esc(e.category || '')}${a}${e.note ? '<br>' + esc(e.note) : ''}</small></div>
       <div class="r"><b>${e.type === 'save' ? '+' : '−'}${money(e.amount)}${e.frequency === 'monthly' ? '/mo' : ''}</b><small>${fut}</small><button class="del" data-del="${e.id}" aria-label="Delete">✕</button></div></li>`;
   }).join('');
 }
@@ -134,10 +134,27 @@ $('#l-filter').addEventListener('click', e => {
   $$('#l-filter button').forEach(x => x.classList.toggle('on', x === b)); renderLog();
 });
 $('#l-list').addEventListener('click', e => {
-  const b = e.target.closest('[data-del]'); if (!b) return;
+  const b = e.target.closest('[data-del]');
+  if (!b) { const li = e.target.closest('[data-edit]'); if (li) openEdit(li.dataset.edit); return; }
   if (!confirm('Delete this entry?')) return;
   db.entries = db.entries.filter(x => x.id !== b.dataset.del); persist(); renderLog(); toast('Deleted');
 });
+
+// Edit = reopen the Log form filled with the entry; submitting updates it in place (same id, createdAt kept).
+function openEdit(id) {
+  const e = db.entries.find(x => x.id === id); if (!e) return;
+  go('add'); editingId = id;
+  $('#title').textContent = 'Edit decision';
+  $('#f-submit').textContent = 'Update decision'; $('#f-cancel').hidden = false;
+  setType(e.type); setFreq(e.frequency === 'monthly' ? 'monthly' : 'once');
+  $('#f-amt').value = e.amount; $('#f-label').value = e.label || ''; $('#f-cat').value = e.category || ''; renderChips();
+  $('#f-note').value = e.note || ''; $('#f-date').value = e.date;
+  const has = !!e.asset;
+  $('#f-has-asset').checked = has; $('#f-asset-fields').hidden = !has;
+  if (has) { $('#f-asset-val').value = e.asset.value; $('#f-asset-dep').value = e.asset.depreciationPct; }
+  previewUpdate();
+}
+$('#f-cancel').addEventListener('click', () => go('log'));
 
 // ---------- quick simulator (nothing is saved) ----------
 let qmode = 'once';
@@ -197,7 +214,10 @@ function renderChips() {
 }
 $('#f-chips').addEventListener('click', e => { const b = e.target.closest('[data-cat]'); if (b) { $('#f-cat').value = b.dataset.cat; renderChips(); } });
 $('#f-cat').addEventListener('input', renderChips);
-function resetForm() { $('#f').reset(); renderChips(); $('#f-date').value = today(); setType('save'); setFreq('once'); $('#f-asset-fields').hidden = true; $('#f-asset-dep').value = 20; }
+let editingId = null;
+function resetForm() {
+  editingId = null; $('#f-submit').textContent = 'Save decision'; $('#f-cancel').hidden = true;
+  $('#f').reset(); renderChips(); $('#f-date').value = today(); setType('save'); setFreq('once'); $('#f-asset-fields').hidden = true; $('#f-asset-dep').value = 20; }
 function setType(t) {
   ftype = t;
   $$('#f-type button').forEach(b => b.classList.toggle('on', b.dataset.t === t));
@@ -237,7 +257,18 @@ $('#f').addEventListener('submit', e => {
   let cat = $('#f-cat').value.trim();
   const known = allCats().find(c => c.toLowerCase() === cat.toLowerCase());
   if (known) cat = known; else db.settings.categories = [...(db.settings.categories || []), cat];
-  db.entries.push({ id: uid(), createdAt: new Date().toISOString(), label: $('#f-label').value.trim(), category: cat, note: $('#f-note').value.trim(), ...d });
+  const fields = { label: $('#f-label').value.trim(), category: cat, note: $('#f-note').value.trim(), ...d };
+  if (editingId) {
+    const i = db.entries.findIndex(x => x.id === editingId);
+    if (i >= 0) {
+      const upd = { ...db.entries[i], ...fields, updatedAt: new Date().toISOString() };
+      if (!d.asset) delete upd.asset; // asset box was cleared or the entry became a save
+      db.entries[i] = upd;
+    }
+    persist(); toast('Entry updated'); go('log');
+    return;
+  }
+  db.entries.push({ id: uid(), createdAt: new Date().toISOString(), ...fields });
   persist(); toast(d.type === 'save' ? 'Saved for future you' : 'Spend logged'); go('home');
 });
 
@@ -294,7 +325,7 @@ $('#x-wipe').onclick = () => {
 };
 
 // Reload the newest code: drop the offline cache and service worker (entries live in localStorage and are kept).
-const APP_VERSION = '17';
+const APP_VERSION = '18';
 $('#app-ver').textContent = APP_VERSION;
 $('#x-update').onclick = async () => {
   try {

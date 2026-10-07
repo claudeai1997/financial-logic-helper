@@ -3,7 +3,7 @@
 const KEY = 'futureme.v1';
 const SCHEMA = 1;
 const CATS = ['Food & drink', 'Shopping', 'Entertainment', 'Travel', 'Transport', 'Subscriptions', 'Gadgets', 'Health', 'Other'];
-const DEFAULTS = { annualReturnPct: 5, currency: 'S$', horizons: [10, 20, 30], categories: [] };
+const DEFAULTS = { annualReturnPct: 5, currency: 'S$', horizons: [5, 10, 20, 30], categories: [] };
 
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];

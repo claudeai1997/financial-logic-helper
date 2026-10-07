@@ -81,3 +81,11 @@ html,body{overflow-x:hidden;max-width:100%}
 .net{font-size:17px;line-height:1.5}
 #h-view button{font-size:16px;padding:12px}
 #h-view-hint{font-size:14px}
+/* summary box (same look as the simulator card) */
+.sumbox .sec{font-size:22px;font-weight:800;margin:2px 0 12px;color:var(--ink)}
+.sumbox .hero{gap:10px}
+.tile{background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:12px;min-width:0}
+.sumbox .net{margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
+.sumbox #h-view{margin-top:0}
+.hz.dim button.on{background:var(--mute)}
+.sumbox .hero .big{font-size:24px;white-space:nowrap}

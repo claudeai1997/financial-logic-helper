@@ -27,6 +27,8 @@ if (navigator.storage && navigator.storage.persist) navigator.storage.persist().
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
 const today = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); };
 const rate = () => db.settings.annualReturnPct / 100;
+const viewMode = () => (db.settings.view === 'lump' ? 'lump' : 'grow');
+const hasMonthly = () => db.entries.some(e => e.frequency === 'monthly');
 function money(n, dec) {
   const s = db.settings.currency;
   const neg = n < 0 ? '-' : '';
@@ -68,20 +70,31 @@ function renderHz() {
 $('#hz').addEventListener('click', e => { const b = e.target.closest('[data-h]'); if (b) { horizon = +b.dataset.h; render(); } });
 
 function renderHome() {
-  const t = totalsAt(db.entries, rate(), horizon);
-  const now = totalsAt(db.entries, rate(), 0);
+  const m = viewMode();
+  const t = totalsAt(db.entries, rate(), horizon, undefined, m);
+  const now = totalsAt(db.entries, rate(), 0, undefined, m);
+  const showView = hasMonthly();
+  $('#h-view').hidden = !showView; $('#h-view-hint').hidden = !showView;
+  $$('#h-view button').forEach(b => b.classList.toggle('on', b.dataset.v === m));
+  $('#h-view-hint').textContent = m === 'grow' ? 'Monthly entries keep adding every month, indefinitely.' : 'Every entry counted once, as a single lump sum.';
+  const more = t.saveContrib > now.saveContrib + 0.005 ? `<br>${money(t.saveContrib)} put in by then` : '';
   $('#h-save-fv').textContent = money(t.saveFv);
-  $('#h-save-sub').innerHTML = `in ${horizon} years<br>You put in ${money(t.saveContrib)} · worth ${money(now.saveFv)} today`;
+  $('#h-save-sub').innerHTML = `in ${horizon} years<br>You've put in ${money(now.saveContrib)} · worth ${money(now.saveFv)} today${more}`;
   $('#h-spend-fv').textContent = money(t.spendNet);
   const assetLine = t.spendAsset > 0 ? `<br>${money(t.spendGrown)} forgone − ${money(t.spendAsset)} asset value kept` : '';
-  $('#h-spend-sub').innerHTML = `in ${horizon} years<br>You spent ${money(t.spendAmt)} · costs ${money(now.spendNet)} today${assetLine}`;
+  $('#h-spend-sub').innerHTML = `in ${horizon} years<br>You've spent ${money(now.spendAmt)} · costs ${money(now.spendNet)} today${assetLine}`;
   const net = t.saveFv - t.spendNet;
   const n = $('#h-net');
   n.hidden = !db.entries.length;
   if (db.entries.length) n.innerHTML = `<b>${money(t.saveFv)}</b> saved vs <b>${money(t.spendNet)}</b> lost: your future self is <b class="${net >= 0 ? 'pos' : 'neg'}">${money(Math.abs(net))} ${net >= 0 ? 'ahead' : 'behind'}</b> at ${db.settings.annualReturnPct}% over ${horizon} years.`;
   $('.cur-sym').textContent = db.settings.currency;
-  $('#chart').innerHTML = chartSvg(series(db.entries, rate(), Math.max(...db.settings.horizons)));
+  $('#chart').innerHTML = chartSvg(series(db.entries, rate(), Math.max(...db.settings.horizons), undefined, m));
 }
+
+$('#h-view').addEventListener('click', e => {
+  const b = e.target.closest('[data-v]'); if (!b) return;
+  db.settings.view = b.dataset.v; persist(); renderHome();
+});
 
 function chartSvg(pts) {
   const W = 320, H = 150, p = { l: 6, r: 6, t: 8, b: 18 };
@@ -100,11 +113,11 @@ function renderLog() {
   const rows = db.entries.filter(e => f === 'all' || e.type === f).sort((a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt));
   $('#l-empty').hidden = rows.length > 0;
   $('#l-list').innerHTML = rows.map(e => {
-    const v = entryAt(e, rate(), horizon);
+    const v = entryAt(e, rate(), horizon, undefined, viewMode());
     const fut = e.type === 'save' ? `<span class="pos">${money(v.grown)}</span> in ${horizon}y` : `<span class="neg">−${money(v.net)}</span> in ${horizon}y`;
     const a = e.asset ? ` · asset ${money(e.asset.value)} @ ${e.asset.depreciationPct}%/yr` : '';
-    return `<li class="${e.type}"><div><b>${esc(e.label)}</b><small>${e.date} · ${esc(e.category || '')}${a}${e.note ? '<br>' + esc(e.note) : ''}</small></div>
-      <div class="r"><b>${e.type === 'save' ? '+' : '−'}${money(e.amount)}</b><small>${fut}</small><button class="del" data-del="${e.id}" aria-label="Delete">✕</button></div></li>`;
+    return `<li class="${e.type}"><div><b>${esc(e.label)}</b><small>${e.date}${e.frequency === 'monthly' ? ' · every month' : ''} · ${esc(e.category || '')}${a}${e.note ? '<br>' + esc(e.note) : ''}</small></div>
+      <div class="r"><b>${e.type === 'save' ? '+' : '−'}${money(e.amount)}${e.frequency === 'monthly' ? '/mo' : ''}</b><small>${fut}</small><button class="del" data-del="${e.id}" aria-label="Delete">✕</button></div></li>`;
   }).join('');
 }
 $('#l-filter').addEventListener('click', e => {
@@ -141,6 +154,7 @@ $('#q-go').addEventListener('click', renderSim);
 $('#q-log').addEventListener('click', () => {
   const v = parseAmt($('#q-amt').value);
   go('add');
+  setFreq(qmode === 'month' ? 'monthly' : 'once');
   if (v > 0) { $('#f-amt').value = v; previewUpdate(); }
 });
 $('#q-amt').addEventListener('input', () => clearSim(''));
@@ -152,7 +166,14 @@ $('#q-mode').addEventListener('click', e => {
 });
 
 // ---------- add form ----------
-let ftype = 'save';
+let ftype = 'save', ffreq = 'once';
+function setFreq(q) {
+  ffreq = q;
+  $$('#f-freq button').forEach(b => b.classList.toggle('on', b.dataset.q === q));
+  $('#f-amt-lbl').textContent = q === 'monthly' ? 'Amount every month' : 'Amount';
+  previewUpdate();
+}
+$('#f-freq').addEventListener('click', e => { const b = e.target.closest('button'); if (b) setFreq(b.dataset.q); });
 // Known categories = built-ins + any saved in settings + any used by entries (so imports are covered).
 function allCats() {
   const seen = new Map();
@@ -167,7 +188,7 @@ function renderChips() {
 }
 $('#f-chips').addEventListener('click', e => { const b = e.target.closest('[data-cat]'); if (b) { $('#f-cat').value = b.dataset.cat; renderChips(); } });
 $('#f-cat').addEventListener('input', renderChips);
-function resetForm() { $('#f').reset(); renderChips(); $('#f-date').value = today(); setType('save'); $('#f-asset-fields').hidden = true; $('#f-asset-dep').value = 20; }
+function resetForm() { $('#f').reset(); renderChips(); $('#f-date').value = today(); setType('save'); setFreq('once'); $('#f-asset-fields').hidden = true; $('#f-asset-dep').value = 20; }
 function setType(t) {
   ftype = t;
   $$('#f-type button').forEach(b => b.classList.toggle('on', b.dataset.t === t));
@@ -182,7 +203,7 @@ $('#f').addEventListener('input', previewUpdate);
 function draft() {
   const amount = parseFloat($('#f-amt').value);
   if (!(amount > 0)) return null;
-  const e = { type: ftype, amount, date: $('#f-date').value || today() };
+  const e = { type: ftype, frequency: ffreq, amount, date: $('#f-date').value || today() };
   if (ftype === 'spend' && $('#f-has-asset').checked) {
     const value = parseFloat($('#f-asset-val').value) || 0;
     const dep = parseFloat($('#f-asset-dep').value);
@@ -194,10 +215,11 @@ function previewUpdate() {
   const d = draft(), el = $('#f-prev');
   if (!d) { el.innerHTML = 'Enter an amount to see what this decision means for future you.'; return; }
   const cells = db.settings.horizons.map(h => {
-    const v = entryAt({ ...d, date: today() }, rate(), h);
+    const v = entryAt({ ...d, date: today() }, rate(), h, new Date(today() + 'T00:00:00').getTime(), 'grow'); // "now" = start of today, so the preview matches the simulator exactly
     return `<div><small>${h}y</small><b class="${d.type === 'save' ? 'pos' : 'neg'}">${d.type === 'save' ? '+' : '−'}${money(v.net)}</b></div>`;
   }).join('');
-  el.innerHTML = `<div class="lbl">${d.type === 'save' ? 'Saving' : 'Spending'} ${money(d.amount)} at ${db.settings.annualReturnPct}% ${d.type === 'save' ? 'grows to' : 'really costs you'}</div><div class="cells">${cells}</div>` +
+  const per = d.frequency === 'monthly' ? ' every month, indefinitely,' : '';
+  el.innerHTML = `<div class="lbl">${d.type === 'save' ? 'Saving' : 'Spending'} ${money(d.amount)}${per} at ${db.settings.annualReturnPct}% ${d.type === 'save' ? 'grows to' : 'really costs you'}</div><div class="cells">${cells}</div>` +
     (d.asset ? `<small>after counting the asset you keep (${money(d.asset.value)} today, ${d.asset.depreciationPct}%/yr)</small>` : '');
 }
 $('#f').addEventListener('submit', e => {
@@ -238,8 +260,8 @@ $('#x-json').onclick = () => {
 };
 $('#x-csv').onclick = () => {
   const q = v => '"' + String(v ?? '').replace(/"/g, '""') + '"';
-  const head = ['id', 'date', 'type', 'amount', 'label', 'category', 'note', 'asset_value', 'asset_depreciation_pct', 'created_at'];
-  const rows = db.entries.map(e => [e.id, e.date, e.type, e.amount, e.label, e.category, e.note, e.asset?.value, e.asset?.depreciationPct, e.createdAt].map(q).join(','));
+  const head = ['id', 'date', 'type', 'amount', 'frequency', 'label', 'category', 'note', 'asset_value', 'asset_depreciation_pct', 'created_at'];
+  const rows = db.entries.map(e => [e.id, e.date, e.type, e.amount, e.frequency || 'once', e.label, e.category, e.note, e.asset?.value, e.asset?.depreciationPct, e.createdAt].map(q).join(','));
   download(`futureme-${stamp()}.csv`, [head.join(','), ...rows].join('\n'), 'text/csv');
   $('#x-status').textContent = `Exported ${db.entries.length} entries.`;
 };
@@ -251,6 +273,7 @@ $('#x-file').onchange = async e => {
     if (d.schema !== SCHEMA || !Array.isArray(d.entries)) throw new Error('Unrecognised file');
     const have = new Set(db.entries.map(x => x.id));
     const add = d.entries.filter(x => x.id && !have.has(x.id) && x.amount > 0 && /^\d{4}-\d{2}-\d{2}$/.test(x.date) && (x.type === 'save' || x.type === 'spend'));
+    add.forEach(x => { if (x.frequency !== 'monthly') x.frequency = 'once'; });
     db.entries.push(...add); persist(); render();
     $('#x-status').textContent = `Imported ${add.length} new entries (${d.entries.length - add.length} skipped).`;
   } catch (err) { $('#x-status').textContent = 'Import failed: ' + err.message; }

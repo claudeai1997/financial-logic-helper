@@ -19,20 +19,35 @@ function assetValue(entry, years) {
 }
 
 // Value of one entry `h` years from now (h=0 -> today).
-// Saved: grown money. Spent: opportunity lost = what the money would have become minus the asset still held.
-function entryAt(entry, rate, h, now) {
+// mode 'lump': every entry counts as a single deposit of `amount` on its date.
+// mode 'grow': a monthly entry repeats every month, indefinitely, first payment one month after its date
+//              (end-of-month convention, identical to fvMonthly so the simulator and the tracker agree).
+// Saved: grown money. Spent: opportunity lost = what the money would have become minus the asset(s) still held.
+function entryAt(entry, rate, h, now, mode) {
   const t = yearsSince(entry.date, now) + h;
-  const grown = fv(entry.amount, rate, t);
-  const asset = entry.type === 'spend' ? assetValue(entry, t) : 0;
-  return { grown, asset, net: entry.type === 'spend' ? grown - asset : grown };
+  const spend = entry.type === 'spend';
+  let grown, asset = 0, contrib;
+  if (entry.frequency === 'monthly' && mode === 'grow') {
+    const n = Math.floor(t * 12 + 1e-9);
+    grown = 0; contrib = entry.amount * n;
+    for (let k = 1; k <= n; k++) {
+      const age = t - k / 12;
+      grown += fv(entry.amount, rate, age);
+      if (spend) asset += assetValue(entry, age);
+    }
+  } else {
+    grown = fv(entry.amount, rate, t); contrib = entry.amount;
+    if (spend) asset = assetValue(entry, t);
+  }
+  return { grown, asset, contrib, net: spend ? grown - asset : grown };
 }
 
-function totalsAt(entries, rate, h, now) {
+function totalsAt(entries, rate, h, now, mode) {
   const o = { saveContrib: 0, saveFv: 0, spendAmt: 0, spendGrown: 0, spendAsset: 0, spendNet: 0 };
   for (const e of entries) {
-    const v = entryAt(e, rate, h, now);
-    if (e.type === 'save') { o.saveContrib += e.amount; o.saveFv += v.grown; }
-    else { o.spendAmt += e.amount; o.spendGrown += v.grown; o.spendAsset += v.asset; o.spendNet += v.net; }
+    const v = entryAt(e, rate, h, now, mode);
+    if (e.type === 'save') { o.saveContrib += v.contrib; o.saveFv += v.grown; }
+    else { o.spendAmt += v.contrib; o.spendGrown += v.grown; o.spendAsset += v.asset; o.spendNet += v.net; }
   }
   return o;
 }
@@ -46,10 +61,10 @@ function fvMonthly(pmt, r, years) {
 }
 
 // Yearly series 0..maxH for the chart.
-function series(entries, rate, maxH, now) {
+function series(entries, rate, maxH, now, mode) {
   const pts = [];
   for (let h = 0; h <= maxH; h++) {
-    const t = totalsAt(entries, rate, h, now);
+    const t = totalsAt(entries, rate, h, now, mode);
     pts.push({ h, save: t.saveFv, lost: t.spendNet });
   }
   return pts;

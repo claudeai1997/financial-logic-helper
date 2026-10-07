@@ -73,10 +73,8 @@ function renderHome() {
   const m = viewMode();
   const t = totalsAt(db.entries, rate(), horizon, undefined, m);
   const now = totalsAt(db.entries, rate(), 0, undefined, m);
-  const showView = hasMonthly();
-  $('#h-view').hidden = !showView; $('#h-view-hint').hidden = !showView;
   $$('#h-view button').forEach(b => b.classList.toggle('on', b.dataset.v === m));
-  $('#h-view-hint').textContent = m === 'grow' ? 'Monthly entries keep adding every month, indefinitely.' : 'Every entry counted once, as a single lump sum.';
+  $('#h-view-hint').textContent = (m === 'grow' ? 'Monthly entries keep adding every month, indefinitely.' : 'Every entry counted once, as a single lump sum.') + (hasMonthly() ? '' : ' (No every-month entries yet, so both views match.)');
   const more = t.saveContrib > now.saveContrib + 0.005 ? `<br>${money(t.saveContrib)} put in by then` : '';
   $('#h-save-fv').textContent = money(t.saveFv);
   $('#h-save-sub').innerHTML = `in ${horizon} years<br>You've put in ${money(now.saveContrib)} · worth ${money(now.saveFv)} today${more}`;
@@ -285,7 +283,7 @@ $('#x-wipe').onclick = () => {
 };
 
 // Reload the newest code: drop the offline cache and service worker (entries live in localStorage and are kept).
-const APP_VERSION = '11';
+const APP_VERSION = '12';
 $('#app-ver').textContent = APP_VERSION;
 $('#x-update').onclick = async () => {
   try {

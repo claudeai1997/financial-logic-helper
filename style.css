@@ -70,3 +70,4 @@ html,body{overflow-x:hidden;max-width:100%}
 .sim-hint{margin:2px 0 10px;text-align:left}
 .sim .logbtn{background:none;color:var(--acc);border:2px solid var(--acc);margin-top:14px}
 #f #f-amt{font-size:40px;font-weight:700;padding:18px 16px;text-align:center}
+.top h1{font-size:21px;line-height:1.15;flex:1;min-width:0}

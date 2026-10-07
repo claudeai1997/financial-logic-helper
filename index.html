@@ -12,7 +12,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" href="icon-192.png">
-<link rel="stylesheet" href="style.css?v=9">
+<link rel="stylesheet" href="style.css?v=10">
 </head>
 <body>
 <main id="app">
@@ -131,6 +131,9 @@
     </div>
     <input id="x-file" type="file" accept="application/json,.json" hidden>
     <p class="hint" id="x-status"></p>
+    <h2>App version</h2>
+    <p class="hint">Version <b id="app-ver"></b>. Your entries are not touched when you update.</p>
+    <div class="btns"><button id="x-update">Check for updates</button></div>
   </section>
 </main>
 
@@ -141,7 +144,7 @@
   <button data-go="set"><i>⚙</i>Settings</button>
 </nav>
 <div id="toast" role="status"></div>
-<script src="calc.js?v=9"></script>
-<script src="app.js?v=9"></script>
+<script src="calc.js?v=10"></script>
+<script src="app.js?v=10"></script>
 </body>
 </html>

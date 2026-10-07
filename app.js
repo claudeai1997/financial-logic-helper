@@ -144,7 +144,7 @@ function renderSim() { // runs only when "Simulate" is pressed
     const put = qmode === 'once' ? amt : amt * 12 * h;
     return `<div class="qrow"><span>${h} years</span><b class="pos">${money(v)}</b><small>You put in ${money(put, put % 1 ? 2 : 0)} · growth +${money(v - put)}</small></div>`;
   }).join('');
-  $('#q-note').textContent = '';
+  $('#q-note').textContent = qmode === 'month' ? 'Payments at the start of each month, the first one today.' : '';
   $('#q-echo').scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 $('#q-go').addEventListener('click', renderSim);
@@ -283,7 +283,7 @@ $('#x-wipe').onclick = () => {
 };
 
 // Reload the newest code: drop the offline cache and service worker (entries live in localStorage and are kept).
-const APP_VERSION = '12';
+const APP_VERSION = '13';
 $('#app-ver').textContent = APP_VERSION;
 $('#x-update').onclick = async () => {
   try {

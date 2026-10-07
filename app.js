@@ -65,28 +65,38 @@ function render() {
 }
 function renderHz() {
   const el = $('#hz');
+  el.classList.toggle('dim', view === 'home' && viewMode() === 'grow'); // years only apply to the lump-sum view
   el.innerHTML = db.settings.horizons.map(h => `<button role="tab" data-h="${h}" class="${h === horizon ? 'on' : ''}">${h}y</button>`).join('');
 }
-$('#hz').addEventListener('click', e => { const b = e.target.closest('[data-h]'); if (b) { horizon = +b.dataset.h; render(); } });
+$('#hz').addEventListener('click', e => {
+  const b = e.target.closest('[data-h]'); if (!b) return;
+  horizon = +b.dataset.h;
+  if (view === 'home' && viewMode() === 'grow') { db.settings.view = 'lump'; persist(); } // picking a year = project that far ahead
+  render();
+});
 
 function renderHome() {
-  const m = viewMode();
-  const t = totalsAt(db.entries, rate(), horizon, undefined, m);
-  const now = totalsAt(db.entries, rate(), 0, undefined, m);
+  // 'grow' = where you stand today (every-month entries add to it as time goes by);
+  // 'lump' = the total after the chosen 5/10/20/30-year horizon, if every-month entries continue.
+  const m = viewMode(), h = m === 'lump' ? horizon : 0;
+  const t = totalsAt(db.entries, rate(), h, undefined, 'grow');
+  const when = m === 'lump' ? `In ${horizon} years` : 'Today';
   $$('#h-view button').forEach(b => b.classList.toggle('on', b.dataset.v === m));
-  $('#h-view-hint').textContent = (m === 'grow' ? 'Monthly entries keep adding every month, indefinitely.' : 'Every entry counted once, as a single lump sum.') + (hasMonthly() ? '' : ' (No every-month entries yet, so both views match.)');
-  const more = t.saveContrib > now.saveContrib + 0.005 ? `<br>${money(t.saveContrib)} put in by then` : '';
+  $('#h-view-hint').textContent = m === 'grow'
+    ? 'Your savings today. Every-month entries add to it as time goes by.'
+    : `Total saved after ${horizon} years if your every-month entries continue. Change the years at the top.`;
+  const perMonth = db.entries.filter(e => e.type === 'save' && e.frequency === 'monthly').reduce((s, e) => s + e.amount, 0);
   $('#h-save-fv').textContent = money(t.saveFv);
-  $('#h-save-sub').innerHTML = `in ${horizon} years<br>You've put in ${money(now.saveContrib)} · worth ${money(now.saveFv)} today${more}`;
+  $('#h-save-sub').innerHTML = `${when}<br>Put in ${money(t.saveContrib)} · growth +${money(t.saveFv - t.saveContrib)}` + (perMonth ? `<br>+${money(perMonth, perMonth % 1 ? 2 : 0)} added every month` : '');
   $('#h-spend-fv').textContent = money(t.spendNet);
-  const assetLine = t.spendAsset > 0 ? `<br>${money(t.spendGrown)} forgone − ${money(t.spendAsset)} asset value kept` : '';
-  $('#h-spend-sub').innerHTML = `in ${horizon} years<br>You've spent ${money(now.spendAmt)} · costs ${money(now.spendNet)} today${assetLine}`;
+  const assetLine = t.spendAsset > 0 ? `<br>${money(t.spendGrown)} forgone − ${money(t.spendAsset)} asset kept` : '';
+  $('#h-spend-sub').innerHTML = `${when}<br>Spent ${money(t.spendAmt)}${assetLine}`;
   const net = t.saveFv - t.spendNet;
   const n = $('#h-net');
   n.hidden = !db.entries.length;
-  if (db.entries.length) n.innerHTML = `<b>${money(t.saveFv)}</b> saved vs <b>${money(t.spendNet)}</b> lost: your future self is <b class="${net >= 0 ? 'pos' : 'neg'}">${money(Math.abs(net))} ${net >= 0 ? 'ahead' : 'behind'}</b> at ${db.settings.annualReturnPct}% over ${horizon} years.`;
+  if (db.entries.length) n.innerHTML = `<b>${money(t.saveFv)}</b> saved vs <b>${money(t.spendNet)}</b> lost: your future self is <b class="${net >= 0 ? 'pos' : 'neg'}">${money(Math.abs(net))} ${net >= 0 ? 'ahead' : 'behind'}</b> at ${db.settings.annualReturnPct}% ${m === 'lump' ? 'over ' + horizon + ' years' : 'today'}.`;
   $('.cur-sym').textContent = db.settings.currency;
-  $('#chart').innerHTML = chartSvg(series(db.entries, rate(), Math.max(...db.settings.horizons), undefined, m));
+  $('#chart').innerHTML = chartSvg(series(db.entries, rate(), Math.max(...db.settings.horizons), undefined, 'grow'));
 }
 
 $('#h-view').addEventListener('click', e => {
@@ -111,8 +121,9 @@ function renderLog() {
   const rows = db.entries.filter(e => f === 'all' || e.type === f).sort((a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt));
   $('#l-empty').hidden = rows.length > 0;
   $('#l-list').innerHTML = rows.map(e => {
-    const v = entryAt(e, rate(), horizon, undefined, viewMode());
-    const fut = e.type === 'save' ? `<span class="pos">${money(v.grown)}</span> in ${horizon}y` : `<span class="neg">−${money(v.net)}</span> in ${horizon}y`;
+    const h = viewMode() === 'lump' ? horizon : 0, w = h ? `in ${h}y` : 'today';
+    const v = entryAt(e, rate(), h, undefined, 'grow');
+    const fut = e.type === 'save' ? `<span class="pos">${money(v.grown)}</span> ${w}` : `<span class="neg">−${money(v.net)}</span> ${w}`;
     const a = e.asset ? ` · asset ${money(e.asset.value)} @ ${e.asset.depreciationPct}%/yr` : '';
     return `<li class="${e.type}"><div><b>${esc(e.label)}</b><small>${e.date}${e.frequency === 'monthly' ? ' · every month' : ''} · ${esc(e.category || '')}${a}${e.note ? '<br>' + esc(e.note) : ''}</small></div>
       <div class="r"><b>${e.type === 'save' ? '+' : '−'}${money(e.amount)}${e.frequency === 'monthly' ? '/mo' : ''}</b><small>${fut}</small><button class="del" data-del="${e.id}" aria-label="Delete">✕</button></div></li>`;
@@ -283,7 +294,7 @@ $('#x-wipe').onclick = () => {
 };
 
 // Reload the newest code: drop the offline cache and service worker (entries live in localStorage and are kept).
-const APP_VERSION = '15';
+const APP_VERSION = '17';
 $('#app-ver').textContent = APP_VERSION;
 $('#x-update').onclick = async () => {
   try {

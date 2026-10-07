@@ -12,7 +12,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" href="icon-192.png">
-<link rel="stylesheet" href="style.css?v=17">
+<link rel="stylesheet" href="style.css?v=18">
 </head>
 <body>
 <main id="app">
@@ -98,7 +98,8 @@
         <input id="f-date" type="date" required>
       </label>
       <div class="card preview" id="f-prev"></div>
-      <button class="primary" type="submit">Save decision</button>
+      <button class="primary" type="submit" id="f-submit">Save decision</button>
+      <button class="ghost" type="button" id="f-cancel" hidden>Cancel</button>
     </form>
   </section>
 
@@ -107,6 +108,7 @@
     <div class="seg small" id="l-filter">
       <button data-f="all" class="on">All</button><button data-f="save">Saved</button><button data-f="spend">Spent</button>
     </div>
+    <p class="hint" id="l-hint">Tap an entry to edit it.</p>
     <ul id="l-list" class="list"></ul>
     <p class="empty" id="l-empty" hidden>Nothing logged yet.</p>
   </section>
@@ -148,7 +150,7 @@
   <button data-go="set"><i>⚙</i>Settings</button>
 </nav>
 <div id="toast" role="status"></div>
-<script src="calc.js?v=17"></script>
-<script src="app.js?v=17"></script>
+<script src="calc.js?v=18"></script>
+<script src="app.js?v=18"></script>
 </body>
 </html>

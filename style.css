@@ -89,3 +89,7 @@ html,body{overflow-x:hidden;max-width:100%}
 .sumbox #h-view{margin-top:0}
 .hz.dim button.on{background:var(--mute)}
 .sumbox .hero .big{font-size:24px;white-space:nowrap}
+/* editable history */
+.list li[data-edit]{cursor:pointer}.list li[data-edit]:active{opacity:.7}
+.ghost{width:100%;border:1px solid var(--line);background:none;color:var(--mute);font:600 16px inherit;padding:14px;border-radius:14px;margin-top:8px}
+#l-hint{margin:0 2px 8px}

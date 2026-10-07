@@ -284,6 +284,17 @@ $('#x-wipe').onclick = () => {
   db = { settings: { ...DEFAULTS }, entries: [] }; persist(); render(); toast('All data erased');
 };
 
+// Reload the newest code: drop the offline cache and service worker (entries live in localStorage and are kept).
+const APP_VERSION = '10';
+$('#app-ver').textContent = APP_VERSION;
+$('#x-update').onclick = async () => {
+  try {
+    if (navigator.serviceWorker) (await navigator.serviceWorker.getRegistrations()).forEach(r => r.unregister());
+    if (window.caches) (await caches.keys()).forEach(k => caches.delete(k));
+  } catch (_) {}
+  location.href = location.pathname + '?r=' + Date.now();
+};
+
 // ---------- boot ----------
 if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js').catch(() => {});
 go('home');

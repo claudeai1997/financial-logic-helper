@@ -74,3 +74,10 @@ html,body{overflow-x:hidden;max-width:100%}
 .sec{font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--mute);margin:22px 2px 10px}
 #h-view{margin-top:12px}
 #h-view-hint{margin:0 2px 12px}
+/* bigger summary */
+.sec{font-size:22px;font-weight:800;text-transform:none;letter-spacing:0;color:var(--ink);margin:26px 2px 12px}
+.hero .lbl{font-size:13px}.hero .big{font-size:30px}
+.hero .sub{font-size:14px;line-height:1.45}
+.net{font-size:17px;line-height:1.5}
+#h-view button{font-size:16px;padding:12px}
+#h-view-hint{font-size:14px}

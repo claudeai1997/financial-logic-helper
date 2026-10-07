@@ -1,4 +1,4 @@
-# Future Me — spend vs save modeller (PWA)
+# Financial Logic Helper — spend vs save modeller (PWA)
 
 Static, offline-capable web app. No build step, no backend, no dependencies.
 

@@ -42,7 +42,7 @@ function esc(s) { const d = document.createElement('div'); d.textContent = s; re
 
 // ---------- nav ----------
 let view = 'home', horizon = db.settings.horizons[Math.min(1, db.settings.horizons.length - 1)] || 20;
-const titles = { home: 'Future Me', add: 'Log a decision', log: 'History', set: 'Settings' };
+const titles = { home: 'Financial Logic Helper', add: 'Log a decision', log: 'History', set: 'Settings' };
 function go(v) {
   view = v;
   $$('.view').forEach(e => e.hidden = e.id !== 'v-' + v);
@@ -285,7 +285,7 @@ $('#x-wipe').onclick = () => {
 };
 
 // Reload the newest code: drop the offline cache and service worker (entries live in localStorage and are kept).
-const APP_VERSION = '10';
+const APP_VERSION = '11';
 $('#app-ver').textContent = APP_VERSION;
 $('#x-update').onclick = async () => {
   try {

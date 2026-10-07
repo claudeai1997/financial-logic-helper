@@ -12,7 +12,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" href="icon-192.png">
-<link rel="stylesheet" href="style.css?v=15">
+<link rel="stylesheet" href="style.css?v=17">
 </head>
 <body>
 <main id="app">
@@ -34,24 +34,27 @@
       <small id="q-note"></small>
       <button type="button" class="primary logbtn" id="q-log">+ Log a decision</button>
     </div>
-    <h2 class="sec">Summary: savings / lost</h2>
-    <div class="hero">
-      <div class="card save">
-        <div class="lbl">Saved for future me</div>
-        <div class="big" id="h-save-fv">–</div>
-        <div class="sub" id="h-save-sub"></div>
+    <div class="card sumbox">
+      <div class="lbl">Summary</div>
+      <h2 class="sec">Savings / lost</h2>
+      <div class="seg small" id="h-view">
+        <button data-v="grow" class="on">As it grows</button><button data-v="lump">Lump sum savings</button>
       </div>
-      <div class="card spend">
-        <div class="lbl">Lost to spending</div>
-        <div class="big" id="h-spend-fv">–</div>
-        <div class="sub" id="h-spend-sub"></div>
+      <p class="hint" id="h-view-hint"></p>
+      <div class="hero">
+        <div class="tile save">
+          <div class="lbl">Saved for future me</div>
+          <div class="big" id="h-save-fv">–</div>
+          <div class="sub" id="h-save-sub"></div>
+        </div>
+        <div class="tile spend">
+          <div class="lbl">Lost to spending</div>
+          <div class="big" id="h-spend-fv">–</div>
+          <div class="sub" id="h-spend-sub"></div>
+        </div>
       </div>
+      <div class="net" id="h-net"></div>
     </div>
-    <div class="seg small" id="h-view">
-      <button data-v="grow" class="on">As it grows</button><button data-v="lump">Lump sum</button>
-    </div>
-    <p class="hint" id="h-view-hint"></p>
-    <div class="card net" id="h-net"></div>
     <div class="card"><div class="lbl">Growth over time</div><div id="chart"></div>
       <div class="legend"><span class="dot g"></span>Saved <span class="dot r"></span>Lost</div></div>
   </section>
@@ -145,7 +148,7 @@
   <button data-go="set"><i>⚙</i>Settings</button>
 </nav>
 <div id="toast" role="status"></div>
-<script src="calc.js?v=15"></script>
-<script src="app.js?v=15"></script>
+<script src="calc.js?v=17"></script>
+<script src="app.js?v=17"></script>
 </body>
 </html>

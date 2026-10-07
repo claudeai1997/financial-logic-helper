@@ -20,17 +20,17 @@ function assetValue(entry, years) {
 
 // Value of one entry `h` years from now (h=0 -> today).
 // mode 'lump': every entry counts as a single deposit of `amount` on its date.
-// mode 'grow': a monthly entry repeats every month, indefinitely, first payment one month after its date
-//              (end-of-month convention, identical to fvMonthly so the simulator and the tracker agree).
+// mode 'grow': a monthly entry repeats every month, indefinitely. Payments fall at the START of each month, the first
+//              on the entry's own date (same convention as fvMonthly, so the simulator and the tracker agree).
 // Saved: grown money. Spent: opportunity lost = what the money would have become minus the asset(s) still held.
 function entryAt(entry, rate, h, now, mode) {
   const t = yearsSince(entry.date, now) + h;
   const spend = entry.type === 'spend';
   let grown, asset = 0, contrib;
   if (entry.frequency === 'monthly' && mode === 'grow') {
-    const n = Math.floor(t * 12 + 1e-9);
+    const n = Math.ceil(t * 12 - 1e-9); // payments made by t: k = 0..n-1 (n=1 on the day it is logged)
     grown = 0; contrib = entry.amount * n;
-    for (let k = 1; k <= n; k++) {
+    for (let k = 0; k < n; k++) {
       const age = t - k / 12;
       grown += fv(entry.amount, rate, age);
       if (spend) asset += assetValue(entry, age);
@@ -52,12 +52,12 @@ function totalsAt(entries, rate, h, now, mode) {
   return o;
 }
 
-// Monthly contributions at end of each month, effective annual rate r; returns balance after `years`.
+// Monthly contributions at the start of each month (first one today), effective annual rate r; balance after `years`.
 function fvMonthly(pmt, r, years) {
   const n = Math.round(years * 12);
   if (r === 0) return pmt * n;
   const m = Math.pow(1 + r, 1 / 12) - 1;
-  return pmt * (Math.pow(1 + m, n) - 1) / m;
+  return pmt * (Math.pow(1 + m, n) - 1) / m * (1 + m);
 }
 
 // Yearly series 0..maxH for the chart.
